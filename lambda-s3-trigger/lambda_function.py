@@ -19,7 +19,7 @@ def lambda_handler(event, context):
 
         upper_content = content.upper()
 
-        output_bucket = "my-output-bucket-2025"
+        output_bucket = os.environ.get('OUTPUT_BUCKET', 'anagram-output-bucket-20250420')
         output_key = f"processed/{key}"
         s3_client.put_object(Bucket=output_bucket, Key=output_key, Body=upper_content)
 

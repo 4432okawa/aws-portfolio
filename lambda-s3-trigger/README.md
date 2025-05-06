@@ -150,6 +150,22 @@ def lambda_handler(event, context):
 - テスト完了後にリソースを削除するには `terraform destroy --var="profile=anagram-sso"` を実行してください。
 
 ## セキュリティ
-- 環境変数を使用して出力バケット名を安全に取得しています。
-- IAMロールは最小権限の原則に従ってカスタムS3ポリシーを使用しています。
-- すべてのバケットはパブリックアクセスがブロックされ、暗号化が有効になっています。
+
+環境変数を使用して出力バケット名を安全に取得しています。
+IAMロールは最小権限の原則に従ってカスタムS3ポリシーを使用しています。
+すべてのバケットはパブリックアクセスがブロックされ、暗号化が有効になっています。
+Banditによるセキュリティスキャンを実施し、セキュリティ上の問題は検出されませんでした：
+bandit -r lambda_function.py
+[main]  INFO    running on Python 3.13.3
+Test results:
+        No issues identified.
+Code scanned:
+        Total lines of code: 79
+        Total lines skipped (#nosec): 0
+Run metrics:
+        Total issues (by severity):
+                Undefined: 0
+                Low: 0
+                Medium: 0
+                High: 0
+

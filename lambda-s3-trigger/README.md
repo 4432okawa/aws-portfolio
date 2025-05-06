@@ -1,118 +1,155 @@
 # AWS Lambda S3 Trigger Function
 
-This Python Lambda function processes files uploaded to an S3 bucket:
-- **Trigger**: Activates on S3 file uploads to `anagram-input-bucket-20250420`.
-- **Functionality**: Reads the file, converts text to uppercase, and saves to `anagram-output-bucket-20250420/processed/`.
-- **Region**: Configured for `us-west-2`.
+このPython Lambda関数はS3バケットにアップロードされたファイルを処理します：
+- **トリガー**: `yossy-input-bucket-20250503`へのS3ファイルアップロードで起動します。
+- **機能**: ファイルを読み込み、テキストを大文字に変換し、`yossy-output-bucket-20250503/processed/`に保存します。
+- **リージョン**: `us-west-2`に設定されています。
 
-## Purpose
-Demonstrates proficiency in AWS Lambda, Python, AWS CLI, and security scanning for serverless applications, built with Amazon Q Developer. Showcases ability to automate serverless workflows with secure configurations for cloud engineering roles.
+## 目的
+AWS Lambda、Python、AWS CLI、およびTerraformを使用したサーバーレスアプリケーションの構築能力を示します。クラウドエンジニアリング役割に適した安全な設定でサーバーレスワークフローを自動化する能力を示します。
 
-## Files
-- `lambda_function.py`: Lambda function code handling S3 events.
+## ファイル
+- `lambda_function.py`: S3イベントを処理するLambda関数コード
+- `main.tf`: Terraformインフラストラクチャコード
 
-## Usage
-To deploy and test the Lambda function on Windows, follow these steps:
+## 使用方法
+Terraformを使用してLambda関数をデプロイしテストするには、以下の手順に従ってください：
 
-1. **Install AWS CLI and configure SSO credentials**:
-   - Install AWS CLI from `https://aws.amazon.com/cli/`.
-   - Configure SSO:
+1. **AWS CLIとTerraformのインストールとSSOプロファイルの設定**:
+   - AWS CLIを`https://aws.amazon.com/cli/`からインストール
+   - Terraformを`https://www.terraform.io/downloads`からインストール
+   - SSOを設定:
      ```cmd
      aws configure sso
      ```
-     - SSO start URL: `https://profile.aws.amazon.com/`
-     - SSO region: `us-east-1`
-     - Profile name: `my-sso`
-   - Verify:
+   - 検証:
      ```cmd
-     aws sts get-caller-identity
+     aws sts get-caller-identity --profile anagram-sso
      ```
 
-2. **Create input and output S3 buckets**:
-   - Create two S3 buckets in `us-west-2` (replace `anagram-input-bucket-20250420` and `anagram-output-bucket-20250420` with globally unique names):
+2. **Terraform初期化と適用**:
+   - Terraformディレクトリに移動:
      ```cmd
-     aws s3 mb s3://anagram-input-bucket-20250420 --region us-west-2
-     aws s3 mb s3://anagram-output-bucket-20250420 --region us-west-2
+     cd aws-portfolio\terraform-s3
      ```
-   - Verify:
+   - Lambda関数のコードを作成:
      ```cmd
-     aws s3 ls
+     mkdir lambda_code
+     cd lambda_code
+     # lambda_function.pyを作成して保存
      ```
-
-3. **Deploy the Lambda function**:
-   - Create a ZIP file of `lambda_function.py`:
-     - In Windows Explorer, right-click `lambda_function.py` → "Send to" → "Compressed (zipped) folder" to create `lambda_function.zip`.
-     - Or use PowerShell:
-       ```cmd
-       powershell -Command "Compress-Archive -Path lambda_function.py -DestinationPath lambda_function.zip"
-       ```
-   - In AWS Management Console (`https://console.aws.amazon.com/lambda/`):
-     - Go to Lambda → "Create function".
-     - Set:
-       - Function name: `S3TriggerFunction`
-       - Runtime: Python 3.9
-       - Permissions: Create a new role with basic Lambda permissions.
-     - Click "Create function".
-     - In "Code" tab, select "Upload from" → ".zip file" → Upload `lambda_function.zip` → "Save".
-   - Add an S3 trigger:
-     - In "Function overview", click "Add trigger".
-     - Select `S3` → Bucket: `anagram-input-bucket-20250420` → Event type: `All object create events` → "Add".
-   - Set environment variable (optional, for secure bucket name):
-     - Go to "Configuration" → "Environment variables" → "Edit".
-     - Add: Key=`OUTPUT_BUCKET`, Value=`anagram-output-bucket-20250420` → "Save".
-
-4. **Configure IAM permissions**:
-   - In IAM Console (`https://console.aws.amazon.com/iam/`):
-     - Find the Lambda role (e.g., `AWSLambdaBasicExecutionRole-xxxx`).
-     - Click "Attach policies" → Search and add `AmazonS3FullAccess` → "Attach policy".
-     - For least privilege, create a custom policy:
-       ```json
-       {
-         "Version": "2012-10-17",
-         "Statement": [
-           {
-             "Effect": "Allow",
-             "Action": ["s3:GetObject", "s3:PutObject"],
-             "Resource": [
-               "arn:aws:s3:::anagram-input-bucket-20250420/*",
-               "arn:aws:s3:::anagram-output-bucket-20250420/*"
-             ]
-           },
-           {
-             "Effect": "Allow",
-             "Action": ["s3:ListBucket"],
-             "Resource": [
-               "arn:aws:s3:::anagram-input-bucket-20250420",
-               "arn:aws:s3:::anagram-output-bucket-20250420"
-             ]
-           }
-         ]
-       }
-       ```
-     - Name: `LambdaS3AccessPolicy` → "Create policy" → Attach to the role.
-
-5. **Test the function**:
-   - Create a test file:
+   - ZIP形式でパッケージ化:
      ```cmd
-     echo test content > test.txt
+     powershell -Command "Compress-Archive -Path lambda_function.py -DestinationPath ..\function.zip -Force"
+     cd ..
      ```
-   - Upload to input bucket:
+   - Terraformを初期化して適用:
      ```cmd
-     aws s3 cp test.txt s3://anagram-input-bucket-20250420/
+     terraform init
+     terraform apply --var="profile=anagram-sso"
      ```
-   - Verify output:
+
+3. **関数のテスト**:
+   - テストファイルを作成:
      ```cmd
-     aws s3 ls s3://anagram-output-bucket-20250420/processed/
+     echo "This is a test file. Hello World!" | Out-File -Encoding ascii test2.txt
      ```
-     - Expected: `test.txt` with content `TEST CONTENT` (check with `aws s3 cp s3://anagram-output-bucket-20250420/processed/test.txt output.txt` and `type output.txt`).
+   - 入力バケットにアップロード:
+     ```cmd
+     aws s3 cp test2.txt s3://yossy-input-bucket-20250503/ --profile anagram-sso
+     ```
+   - 出力を確認:
+     ```cmd
+     aws s3 ls s3://yossy-output-bucket-20250503/processed/ --profile anagram-sso
+     aws s3 cp s3://yossy-output-bucket-20250503/processed/test2.txt processed_test.txt --profile anagram-sso
+     type processed_test.txt
+     ```
+   - 期待される出力: `THIS IS A TEST FILE. HELLO WORLD!`
 
-## Security
-- Scanned with Amazon Q Security Scan to ensure no hard-coded credentials.
-- Uses `os.environ` to securely retrieve bucket names from environment variables.
-- IAM role follows least privilege principle with custom S3 policy.
+## コード例（Lambda関数）
+```python
+import json
+import boto3
+import logging
+import os
+from botocore.exceptions import ClientError
 
-## Notes
-- Replace `anagram-input-bucket-20250420` and `anagram-output-bucket-20250420` with your unique bucket names.
-- Ensure Lambda execution role has permissions for S3 and CloudWatch Logs.
-- Delete buckets after testing to avoid costs (`aws s3 rb s3://bucket-name --force`).
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
+s3_client = boto3.client('s3')
+
+def lambda_handler(event, context):
+    try:
+        # 入力検証: イベントの構造を確認
+        if not event.get('Records') or len(event['Records']) == 0:
+            logger.error("Invalid event structure: no Records found")
+            return {
+                'statusCode': 400,
+                'body': json.dumps('Invalid event structure')
+            }
+            
+        bucket = event['Records'][0]['s3']['bucket']['name']
+        key = event['Records'][0]['s3']['object']['key']
+        
+        # 入力値のサニタイズと検証
+        if not bucket or not key:
+            logger.error("Missing bucket name or object key")
+            return {
+                'statusCode': 400,
+                'body': json.dumps('Missing bucket name or object key')
+            }
+            
+        logger.info(f"Processing file: {key} from bucket: {bucket}")
+
+        try:
+            response = s3_client.get_object(Bucket=bucket, Key=key)
+            content = response['Body'].read().decode('utf-8')
+        except ClientError as e:
+            logger.error(f"Error retrieving object from S3: {str(e)}")
+            return {
+                'statusCode': 500,
+                'body': json.dumps('Error retrieving file from S3')
+            }
+
+        upper_content = content.upper()
+
+        # 環境変数の安全な取得
+        output_bucket = os.environ.get('OUTPUT_BUCKET')
+        if not output_bucket:
+            output_bucket = 'yossy-output-bucket-20250503'
+            logger.warning(f"OUTPUT_BUCKET environment variable not set, using default: {output_bucket}")
+            
+        output_key = f"processed/{key}"
+        
+        try:
+            s3_client.put_object(Bucket=output_bucket, Key=output_key, Body=upper_content)
+        except ClientError as e:
+            logger.error(f"Error saving object to S3: {str(e)}")
+            return {
+                'statusCode': 500,
+                'body': json.dumps('Error saving processed file to S3')
+            }
+
+        logger.info(f"Saved to {output_bucket}/{output_key}")
+        return {
+            'statusCode': 200,
+            'body': json.dumps('File processed successfully')
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f'Error processing file: {str(e)}')
+        }
+```
+
+## 注意事項
+- エンコーディングの問題が発生した場合は、ファイルをASCIIまたはUTF-8でエンコードしてください。
+- Lambda関数のコードを変更する場合は、新しいZIPファイルを作成し、再度Terraformを適用してください。
+- テスト完了後にリソースを削除するには `terraform destroy --var="profile=anagram-sso"` を実行してください。
+
+## セキュリティ
+- 環境変数を使用して出力バケット名を安全に取得しています。
+- IAMロールは最小権限の原則に従ってカスタムS3ポリシーを使用しています。
+- すべてのバケットはパブリックアクセスがブロックされ、暗号化が有効になっています。
